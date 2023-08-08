@@ -16,14 +16,14 @@
 			act = null;
 			return false;
 		} 
-		//For some gcds very important, even more than healing, defense, interrupt, etc.
-		//protected override bool EmergencyGCD(out IAction act)
-		//{
-		//	return base.EmergencyGCD(out act);
-		//}
+		For some gcds very important, even more than healing, defense, interrupt, etc.
+		protected override bool EmergencyGCD(out IAction act)
+		{
+			return base.EmergencyGCD(out act);
+		}
 
 		//For some gcds that moving forward.
-		otationDesc("Optional description for Moving Forward GCD")]
+		[RotationDesc("Optional description for Moving Forward GCD")]
 		[RotationDesc(ActionID.None)]
 		protected override bool MoveForwardGCD(out IAction act)
 		{
