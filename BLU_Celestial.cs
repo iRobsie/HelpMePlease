@@ -62,8 +62,8 @@
 		#region 0GCD actions
 		protected override bool AttackAbility(out IAction act)
 		{
-            act = null;
-            throw new NotImplementedException();
+           		 act = null;
+           		 throw new NotImplementedException();
 		}
 
 		//For some 0gcds very important, even more than healing, defense, interrupt, etc.
