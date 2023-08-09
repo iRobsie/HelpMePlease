@@ -1,156 +1,248 @@
-﻿namespace CelestialRotations.Magical
+namespace CelestialRotations.Magical
 {
-	internal class BLU_Celestial : BLU_Base
-	{
+    internal class BLU_Celestial : BLU_Base
+    {
 
-		public override string GameVersion => "6.45";
-		public override string RotationName => "BLU_Celestial";
-		public override string Description => "My soon to be custom rotations.";
-		protected override bool CanHealAreaSpell => this.CanHealAreaSpell;
-		protected override bool CanHealSingleSpell => this.CanHealSingleSpell;
+        public override string GameVersion => "6.48";
+        public override string RotationName => "BLU_Celestial";
+        public override string Description => "My soon to be custom rotations.";
+        protected override bool CanHealAreaSpell => this.CanHealAreaSpell;
+        protected override bool CanHealSingleSpell => this.CanHealSingleSpell;
 
-		#region GCD actions
-		protected override bool GeneralGCD(out IAction act)
-		{
-			if (Electrogenesis.CanUse(out act, CanUseOption.MustUse)) return true;
-			act = null;
-			return false;
-		} 
-		For some gcds very important, even more than healing, defense, interrupt, etc.
-		protected override bool EmergencyGCD(out IAction act)
-		{
-			return base.EmergencyGCD(out act);
-		}
+        protected override IRotationConfigSet CreateConfiguration()
+        {
+            return base.CreateConfiguration()
+                .SetBool("MoonFluteBreak", false, "Use Moon Flute on cooldown?")
+                .SetBool("SingleAOE", true, "Apply AOE Skills to your Single Target Rotation?")
+                .SetBool("GamblerKill", false, "Risk chanced abilities, that don't have 100% success rate.")
+                .SetBool("UseFinalSting", false, "Use Final Sting, die nerd.")
+                .SetFloat("FinalStingHP", 0, "Health Threshold for Final Sting");
+        }
 
-		//For some gcds that moving forward.
-		[RotationDesc("Optional description for Moving Forward GCD")]
-		[RotationDesc(ActionID.None)]
-		protected override bool MoveForwardGCD(out IAction act)
-		{
-		    return base.MoveForwardGCD(out act);
-		}
+        private bool MoonFluteBreak => Configs.GetBool("MoonFluteBreak");
+        private static bool QuickLevel => false;
+        private bool GamblerKill => Configs.GetBool("GamblerKill");
+        private bool SingleAOE => Configs.GetBool("SingleAOE");
 
-		[RotationDesc("Optional description for Defense Area GCD")]
-		[RotationDesc(ActionID.None)]
-		protected override bool DefenseAreaGCD(out IAction act)
-		{
-			return base.DefenseAreaGCD(out act);
-		}
+        #region GCD actions
+        protected override bool GeneralGCD(out IAction act)
+        {
+            act = null;
+            if (Player.HasStatus(true, StatusID.WaxingNocturne)) return false;
+            //high injury
+            if (PrimalSpell(out act)) return true;
+            //colony
+            if (AreaGCD(out act)) return true;
+            // unitary filling
+            if (SingleGCD(out act)) return true;
+            return false;
+        }
 
-		[RotationDesc("Optional description for Defense Single GCD")]
-		[RotationDesc(ActionID.None)]
-		protected override bool DefenseSingleGCD(out IAction act)
-		{
-			return base.DefenseSingleGCD(out act);
-		}
+        private bool SingleGCD(out IAction act)
+        {
+            act = null;
+            if (Player.HasStatus(true, StatusID.WaxingNocturne)) return false;
 
-		[RotationDesc("Optional description for Healing Area GCD")]
-		[RotationDesc(ActionID.None)]
-		protected override bool HealAreaGCD(out IAction act)
-		{
-			return base.HealAreaGCD(out act);
-		}
+            //Sliding tongue + stun 0-70 for leveling
+            if (QuickLevel && StickyTongue.CanUse(out act)) return true;
 
-		[RotationDesc("Optional description for Healing Single GCD")]
-		[RotationDesc(ActionID.None)]
-		protected override bool HealSingleGCD(out IAction act)
-		{
-			return base.HealSingleGCD(out act);
-		}
-		#endregion
+            //Song of Depression
+            if (AllOnSlot(Bristle, SongOfTorment) && SongOfTorment.CanUse(out _))
+            {
+                //bristle
+                if (Bristle.CanUse(out act)) return true;
+                if (SongOfTorment.CanUse(out act)) return true;
+            }
+            if (SongOfTorment.CanUse(out act)) return true;
 
-		#region 0GCD actions
-		protected override bool AttackAbility(out IAction act)
-		{
-           		 act = null;
-           		 throw new NotImplementedException();
-		}
+            // Vengeance Shock
+            if (RevengeBlast.CanUse(out act)) return true;
+            //gambler behavior
+            if (GamblerKill)
+            {
+                //missile
+                if (Missile.CanUse(out act)) return true;
+                // spiral tail
+                if (TailScrew.CanUse(out act)) return true;
+                //death declaration
+                if (Doom.CanUse(out act)) return true;
+            }
 
-		//For some 0gcds very important, even more than healing, defense, interrupt, etc.
-		protected override bool EmergencyAbility(IAction nextGCD, out IAction act)
-		{
-			return base.EmergencyAbility(nextGCD, out act);
-		}
+            //Sharp kitchen knife, melee, stun and damage increase
+            if (SharpenedKnife.CanUse(out act)) return true;
 
-		//Some 0gcds that don't need to a hostile target in attack range.
-		protected override bool GeneralAbility(out IAction act)
-		{
-			return base.GeneralAbility(out act);
-		}
+            //blood sucking back to blue
+            if (CurrentMp < 1000 && BloodDrain.CanUse(out act)) return true;
+            // sonic boom
+            if (SonicBoom.CanUse(out act)) return true;
+            if (DrillCannons.CanUse(out act, CanUseOption.MustUse)) return true;
+            // Eternal ray cannot + stun 1s
+            if (PerpetualRay.CanUse(out act)) return true;
+            //The abyss runs through nothing + paralysis
+            if (AbyssalTransfixion.CanUse(out act)) return true;
+            //Countercurrent Thunder method + aggravation
+            if (Reflux.CanUse(out act)) return true;
+            //Water cannons
+            if (WaterCannon.CanUse(out act)) return true;
 
-		//Some 0gcds that moving forward. In general, it doesn't need to be override.
-		[RotationDesc("Optional description for Moving Forward 0GCD")]
-		[RotationDesc(ActionID.None)]
-		protected override bool MoveForwardAbility(out IAction act)
-		{
-			return base.MoveForwardAbility(out act);
-		}
+            // small detection
+            if (CondensedLibra.CanUse(out act)) return true;
 
-		//Some 0gcds that moving back. In general, it doesn't need to be override.
-		[RotationDesc("Optional description for Moving Back 0GCD")]
-		[RotationDesc(ActionID.None)]
-		protected override bool MoveBackAbility(out IAction act)
-		{
-			return base.MoveBackAbility(out act);
-		}
+            // tongue slip + vertigo
+            if (StickyTongue.CanUse(out act)) return true;
 
-		//Some 0gcds that defense area.
-		[RotationDesc("Optional description for Defense Area 0GCD")]
-		[RotationDesc(ActionID.None)]
-		protected override bool DefenseAreaAbility(out IAction act)
-		{
-			return base.DefenseAreaAbility(out act);
-		}
+            // Throw sardines (interrupt)
+            if (FlyingSardine.CanUse(out act)) return true;
 
-		//Some 0gcds that defense single.
-		[RotationDesc("Optional description for Defense Single 0GCD")]
-		[RotationDesc(ActionID.None)]
-		protected override bool DefenseSingleAbility(out IAction act)
-		{
-			return base.DefenseSingleAbility(out act);
-		}
+            return false;
+        }
 
-		//Some 0gcds that healing area.
-		[RotationDesc("Optional description for Healing Area 0GCD")]
-		[RotationDesc(ActionID.None)]
-		protected override bool HealAreaAbility(out IAction act)
-		{
-			return base.HealAreaAbility(out act);
-		}
+        private bool AreaGCD(out IAction act)
+        {
+            act = null;
+            if (Player.HasStatus(true, StatusID.WaxingNocturne)) return false;
 
-		//Some 0gcds that healing single.
-		[RotationDesc("Optional description for Healing Single 0GCD")]
-		[RotationDesc(ActionID.None)]
-		protected override bool HealSingleAbility(out IAction act)
-		{
-			return base.HealSingleAbility(out act);
-		}
-		#endregion
+            //gambler behavior
+            if (GamblerKill)
+            {
+                // rocket launcher
+                if (Launcher.CanUse(out act, CanUseOption.MustUse)) return true;
+                //Level 5 is dead
+                if (Level5Death.CanUse(out act, CanUseOption.MustUse)) return true;
+            }
 
-		#region Extra
-		//For counting down action when pary counting down is active.
-		protected override IAction CountDownAction(float remainTime)
-		{
-			return base.CountDownAction(remainTime);
-		}
+            if (HasCompanion && ChocoMeteor.CanUse(out act, CanUseOption.MustUse)) return true;
 
-		//This is the method to update all field you wrote, it is used first during one frame.
-		protected override void UpdateInfo()
-		{
-			base.UpdateInfo();
-		}
+            if (HostileTargets.GetObjectInRadius(6).Count() < 3)
+            {
 
-		//This method is used when player change the terriroty, such as go into one duty, you can use it to set the field.
-		public override void OnTerritoryChanged()
-		{
-			base.OnTerritoryChanged();
-		}
+                if (HydroPull.CanUse(out act)) return true;
+            }
 
-		//This method is used to debug. If you want to show some information in Debug panel, show something here.
-		public override void DisplayStatus()
-		{
-			base.DisplayStatus();
-		}
-		#endregion
-	}
+
+            if (TheRamVoice.CanUse(out act)) return true;
+
+
+            if (!IsMoving && Target.HasStatus(false, StatusID.DeepFreeze) && TheRamVoice.CanUse(out act)) return true;
+
+
+            if (TheDragonVoice.CanUse(out act)) return true;
+
+
+            if (Blaze.CanUse(out act)) return true;
+            if (FeculentFlood.CanUse(out act)) return true;
+
+            if (FlameThrower.CanUse(out act)) return true;
+
+            if (AquaBreath.CanUse(out act)) return true;
+
+            if (HighVoltage.CanUse(out act)) return true;
+
+            if (Glower.CanUse(out act)) return true;
+
+            if (PlainCracker.CanUse(out act)) return true;
+
+            if (TheLook.CanUse(out act)) return true;
+
+            if (InkJet.CanUse(out act)) return true;
+            if (FireAngon.CanUse(out act)) return true;
+            if (MindBlast.CanUse(out act)) return true;
+            if (AlpineDraft.CanUse(out act)) return true;
+            if (ProteanWave.CanUse(out act)) return true;
+            if (Northerlies.CanUse(out act)) return true;
+            if (Electrogenesis.CanUse(out act)) return true;
+            if (WhiteKnightsTour.CanUse(out act)) return true;
+            if (BlackKnightsTour.CanUse(out act)) return true;
+            if (Tatamigaeshi.CanUse(out act)) return true;
+
+            if (MustardBomb.CanUse(out act)) return true;
+            if (AetherialSpark.CanUse(out act)) return true;
+            if (MaledictionOfWater.CanUse(out act)) return true;
+            if (FlyingFrenzy.CanUse(out act)) return true;
+            if (DrillCannons.CanUse(out act)) return true;
+            if (Weight4Tonze.CanUse(out act)) return true;
+            if (Needles1000.CanUse(out act)) return true;
+            if (Kaltstrahl.CanUse(out act)) return true;
+            if (PeripheralSynthesis.CanUse(out act)) return true;
+            if (FlameThrower.CanUse(out act)) return true;
+            if (FlameThrower.CanUse(out act)) return true;
+            if (SaintlyBeam.CanUse(out act)) return true;
+
+            return false;
+        }
+
+        private bool PrimalSpell(out IAction act)
+        {
+            act = null;
+            if (Player.HasStatus(true, StatusID.WaxingNocturne)) return false;
+
+            // ice fog
+            if (WhiteDeath.CanUse(out act)) return true;
+            //Xuantianwu Water Wall
+            if (DivineCataract.CanUse(out act)) return true;
+
+            //fighting bullet
+            if (TheRoseOfDestruction.CanUse(out act)) return true;
+
+            //Harpoon three sections
+            if (InBurst && !MoonFluteBreak && TripleTrident.CanUse(out act)) return true;
+            // Matra magic
+            if (InBurst && !MoonFluteBreak && MatraMagic.CanUse(out act)) return true;
+
+            //prey
+            if (Devour.CanUse(out act)) return true;
+            //magic hammer
+            //if (MagicHammer.ShouldUse(out act)) return true;
+
+            var option = SingleAOE ? CanUseOption.MustUse : CanUseOption.None;
+            //flowers on the other side of the moon
+            if (InBurst && !MoonFluteBreak && NightBloom.CanUse(out act, option)) return true;
+            // wishful whirlwind
+            if (InBurst && !MoonFluteBreak && BothEnds.CanUse(out act, option)) return true;
+
+            //Armor piercing shotgun
+            if (InBurst && !MoonFluteBreak && Surpanakha.CurrentCharges >= 3 && Surpanakha.CanUse(out act, option | CanUseOption.EmptyOrSkipCombo)) return true;
+
+            // quasar
+            if (Quasar.CanUse(out act, option)) return true;
+            //just kick
+            if (!IsMoving && JKick.CanUse(out act, option)) return true;
+
+            // ground fire eruption
+            if (Eruption.CanUse(out act, option)) return true;
+            //flying rain
+            if (FeatherRain.CanUse(out act, option)) return true;
+
+            //Boom
+            if (ShockStrike.CanUse(out act, option)) return true;
+            //landslide
+            if (MountainBuster.CanUse(out act, option)) return true;
+
+            //Ice and Snow Flurry
+            if (GlassDance.CanUse(out act, option)) return true;
+
+            return false;
+        }
+
+        //For some gcds very important, even more than healing, defense, interrupt, etc.
+        protected override bool EmergencyGCD(out IAction act)
+        {
+            return base.EmergencyGCD(out act);
+        }
+
+        [RotationDesc("Optional description for Healing Area GCD")]
+        [RotationDesc(ActionID.None)]
+        protected override bool HealAreaGCD(out IAction act)
+        {
+            return base.HealAreaGCD(out act);
+        }
+
+        [RotationDesc("Optional description for Healing Single GCD")]
+        [RotationDesc(ActionID.None)]
+        protected override bool HealSingleGCD(out IAction act)
+        {
+            return base.HealSingleGCD(out act);
+        }
+        #endregion
+    }
 }
