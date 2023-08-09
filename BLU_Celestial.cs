@@ -1,5 +1,6 @@
 namespace CelestialRotations.Magical
 {
+    [RotationDesc("This is a burst info", ActionID.Divination)]
     internal class BLU_Celestial : BLU_Base
     {
 
@@ -23,7 +24,7 @@ namespace CelestialRotations.Magical
         private static bool QuickLevel => false;
         private bool GamblerKill => Configs.GetBool("GamblerKill");
         private bool SingleAOE => Configs.GetBool("SingleAOE");
-
+        private new bool InBurst { get; set; }
         #region GCD actions
         protected override bool GeneralGCD(out IAction act)
         {
@@ -228,6 +229,23 @@ namespace CelestialRotations.Magical
         protected override bool EmergencyGCD(out IAction act)
         {
             return base.EmergencyGCD(out act);
+        }
+
+        protected override bool EmergencyAbility(IAction nextGCD, out IAction act)
+        {
+            {
+                if (!Player.IsCasting)
+                {
+                    InBurst = true;
+                }
+                else InBurst = false;
+            }
+            if (InBurst == true)
+            {
+               return this.GeneralGCD(out act);
+            }
+            act = null;
+            return false;
         }
 
         [RotationDesc("Optional description for Healing Area GCD")]
